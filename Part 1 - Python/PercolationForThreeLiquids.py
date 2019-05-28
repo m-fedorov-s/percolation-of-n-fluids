@@ -1,3 +1,6 @@
+# Copyright Fedorov Mikhail, 2019
+# fedorov.mikhail.s@gmail.com
+
 import random
 
 class TripleHexLatt :

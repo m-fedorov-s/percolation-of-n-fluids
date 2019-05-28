@@ -1,0 +1,47 @@
+*.[ao]
+*~
+*.exe
+*.pdf
+*.log
+*.db
+*.ilk
+*.obj
+*.tlog
+*.idb
+*.txt
+*.tex
+/текст
+/.idea
+/tmp
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
