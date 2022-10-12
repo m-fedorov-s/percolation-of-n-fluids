@@ -1,8 +1,15 @@
-import random
+# Copyright Fedorov Mikhail, 2019
+# fedorov.mikhail.s@gmail.com
 
+import random
+#Короткая программа описывающая классическую модель протекания.
+#Шестиугольная решетка представлена двумерным массивом, каждый
+# элемент которого отвечает за протекание жидкости через данную клетку.
 class HexLatt :
-    def __init__(self, n):
-        self.size=n
+#Класс HexLatt хранит в себе все данный протекания жидкостей через клетки, 
+#структуру шестиугольной решетки и методы для работы с этими данными.
+    def __init__(self, n): #конструктор класса
+        self.size = n #количество клеток в сотороне шестиугольника
         self.good = set()
         self.notvisited = self.good
         self.BoardVisited = False
@@ -17,13 +24,13 @@ class HexLatt :
                 if random.randrange(2)==1 : self.good |= set([(i+self.size-1, j)])
         self.notvisited = self.good
     
-    def GetNeighbours(self, x, y):
+    def GetNeighbours(self, x, y): #функция по координатам клетки выдоет набор координат шести соседних клеток
         return set([(x-1, y-1), (x-1, y), (x, y-1), (x+1, y), (x, y+1), (x+1, y+1)])
     
-    def CheckPercol(self):
+    def CheckPercol(self): #
         self.notvisited = self.good
         self.BoardVisited = False
-        self.dfs(self.size-1,self.size-1)
+        self.dfs(self.size-1,self.size-1) #начинаем обход из центральной клетки.
         return self.BoardVisited
     
     def IsInBoard(self, x, y):
@@ -52,7 +59,7 @@ def main():
         a = HexLatt(i+2)
         print ("Сторона {0} -> {1}".format(i+2, a.MakeGuesses(2000)))
         del a
-    a = input("Rjytw.")
+    a = input("Finished.")
     print(a)
     
     
