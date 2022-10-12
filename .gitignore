@@ -10,10 +10,12 @@
 *.idb
 *.txt
 *.tex
-*.doc*
 /текст
 /.idea
-/tmp
+/.vscode
+**/.ipynb_checkpoints
+*.aux
+*.synctex.gz
 # Prerequisites
 *.d
 
