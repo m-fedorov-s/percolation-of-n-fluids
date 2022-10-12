@@ -12,7 +12,10 @@
 *.tex
 /текст
 /.idea
-/tmp
+/.vscode
+**/.ipynb_checkpoints
+*.aux
+*.synctex.gz
 # Prerequisites
 *.d
 
