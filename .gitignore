@@ -13,9 +13,6 @@
 /текст
 /.idea
 /.vscode
-**/.ipynb_checkpoints
-*.aux
-*.synctex.gz
 # Prerequisites
 *.d
 
