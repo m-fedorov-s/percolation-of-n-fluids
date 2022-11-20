@@ -28,6 +28,10 @@ public:
 
     bool IsInBorder(int x, int y) const;
 
+    const std::vector<std::vector<std::vector<int8_t>>> &Coloring() const;
+
+    void SetZeroLiquid(const std::vector<std::vector<bool>> &liquid_map);
+
     std::vector<std::pair<int, int>> GetLiquidNeighbors(int x, int y, int liquid) const;
 
 private:
@@ -91,50 +95,78 @@ int main(int argc, char **argv) {
         return 0;
     }
     std::mt19937 generator(1514);
-    size_t min_size = 5;
-    size_t max_size = 500;
-    size_t step = 5;
+    std::cout << "This program will run experiments for several sizes of a hexagon, for several "
+                 "number of liquids.\n"
+              << "For each size and number of liquids we will sample a fixed number of colorings "
+                 "of the hexagonal.\n"
+              << "And for each coloring we will check percolation of each liquid.\n";
+    std::cout << "The sizes of the hexagon will be from min_size to max_size with a fixed step.\n"
+              << "I.e. sizes would be min_size; min_size + step; min_size + 2 * step ...\n"
+              << "Please, enter the minimal size of the hexagon (recommended at least 5):";
+    size_t min_size;
+    std::cin >> min_size;
+    std::cout << "Please, enter the maximal size of the hexagon:";
+    size_t max_size;
+    std::cin >> max_size;
+    std::cout << "Please, enter the step of the sizes (recommended 5):";
+    size_t step;
+    std::cin >> step;
     std::cout << "Size: from " << min_size << " to " << max_size << " with step " << step << ".\n";
-    std::cout << "Enter number of samples: ";
+    std::cout << "The number of liquids will be from min_liquids to max_liquids with step 1\n";
+    std::cout << "Please, enter the minimal number of liquids: ";
+    size_t liquids_count_min;
+    std::cin >> liquids_count_min;
+    std::cout << "Please, enter the maximal number of liquids: ";
+    size_t liquids_count_max;
+    std::cin >> liquids_count_max;
+    assert(liquids_count_max >= liquids_count_min);
+    std::cout << "Liquids number will be from" << liquids_count_min << " to " << liquids_count_max
+              << " inclusively.\n";
+    std::cout << "Please, enter the number of samples: ";
     size_t samples;
     std::cin >> samples;
-    std::cout << "Enter number of liquids: ";
-    size_t liquids_count;
-    std::cin >> liquids_count;
+    std::cout << "The results will be saved in folder results_csv in a separate files.\n";
 
     int64_t total_steps = 0;
     for (auto size = min_size; size <= max_size; size += step) {
-        total_steps += samples * size * size;
+        for (auto liquids = liquids_count_min; liquids <= liquids_count_max; ++liquids) {
+            total_steps += liquids * samples * size * size;
+        }
     }
     int64_t current_step = 0;
     auto start = std::chrono::high_resolution_clock::now();
-    for (auto size = min_size; size <= max_size; size += step) {
-        std::vector<std::vector<bool>> results;
-        std::stringstream filename_stream;
-        filename_stream << "./results_csv/results_liquids_" << liquids_count << "_size_" << size
-                        << ".csv";
-        auto filename = filename_stream.str();
-        results.reserve(samples);
-        ColoredHexagon hex(size, liquids_count);
-        for (auto num = 0; static_cast<size_t>(num) < samples; ++num) {
-            auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
-                                    std::chrono::high_resolution_clock::now() - start)
-                                    .count();
-            auto time_estimated =
-                current_step > 0 ? static_cast<double>(time_elapsed * total_steps) / current_step
-                                 : 0;
-            auto minutes_estimated = static_cast<int>(floor(time_estimated / 60));
-            auto seconds_estimated = time_estimated - minutes_estimated * 60;
-            std::cerr << "Computations " << std::fixed << std::setprecision(2)
-                      << static_cast<double>(current_step) / total_steps * 100 << "%; Time passed "
-                      << time_elapsed / 60 << ":" << std::setw(2) << std::setfill('0')
-                      << time_elapsed % 60 << " out of " << minutes_estimated << ":" << std::setw(5)
-                      << std::setfill('0') << seconds_estimated << " estimated.\r";
-            current_step += size * size;
-            hex.Randomize(&generator);
-            results.push_back(CheckPercolate(hex));
+    for (auto liquids_count = liquids_count_min; liquids_count <= liquids_count_max;
+         ++liquids_count) {
+        for (auto size = min_size; size <= max_size; size += step) {
+            std::vector<std::vector<bool>> results;
+            std::stringstream filename_stream;
+            filename_stream << "./results_csv/results_liquids_" << liquids_count << "_size_" << size
+                            << ".csv";
+            auto filename = filename_stream.str();
+            results.reserve(samples);
+            ColoredHexagon hex(size, liquids_count);
+            for (auto num = 0; static_cast<size_t>(num) < samples; ++num) {
+                auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                                        std::chrono::high_resolution_clock::now() - start)
+                                        .count();
+                auto time_estimated =
+                    current_step > 0
+                        ? static_cast<double>(time_elapsed * total_steps) / current_step
+                        : 0;
+                auto minutes_estimated = static_cast<int>(floor(time_estimated / 60));
+                auto seconds_estimated = time_estimated - minutes_estimated * 60;
+                std::cerr << "Computations " << std::fixed << std::setprecision(2)
+                          << static_cast<double>(current_step) / total_steps * 100
+                          << "%; Time passed " << time_elapsed / 60 << ":" << std::setw(2)
+                          << std::setfill('0') << time_elapsed % 60 << " out of "
+                          << minutes_estimated << ":" << std::setw(5) << std::setfill('0')
+                          << seconds_estimated << " estimated.\r";
+                current_step += liquids_count * size * size;
+                hex.Randomize(&generator);
+                results.push_back(CheckPercolate(hex));
+            }
+            WriteToFile(results, filename);
         }
-        WriteToFile(results, filename);
     }
     return 0;
 }
@@ -206,6 +238,18 @@ bool ColoredHexagon::IsInBorder(int x, int y) const {
            x - y == hexagon_size || y - x == hexagon_size;
 }
 
+const std::vector<std::vector<std::vector<int8_t>>> &ColoredHexagon::Coloring() const {
+    return coloring;
+}
+
+void ColoredHexagon::SetZeroLiquid(const std::vector<std::vector<bool>> &liquid_map) {
+    for (auto i = 0; i < hexagon_size * 2 - 1; ++i) {
+        for (auto j = 0; j < hexagon_size * 2 - 1; ++j) {
+            coloring[i][j][0] = liquid_map[i][j];
+        }
+    }
+}
+
 std::vector<bool> CheckPercolate(const ColoredHexagon &hex) {
     auto liquids = hex.LiquidsCount();
     auto size = hex.HexagonSize();
@@ -256,8 +300,76 @@ void WriteToFile(std::vector<std::vector<bool>> results, std::string filename) {
     }
 }
 
+void TestRandomizing(int size, int liquids) {
+    std::mt19937 generator(1514);
+    ColoredHexagon hex(size, liquids);
+    hex.Randomize(&generator);
+    for (auto &line : hex.Coloring()) {
+        for (auto &cell : line) {
+            auto sum = 0;
+            for (auto i : cell) {
+                sum += i;
+            }
+            assert(sum % 2 == 1);
+        }
+    }
+}
+
+void MakeCircle(std::vector<std::vector<bool>> *map, int size, int radius) {
+    for (auto i = 0; i < radius; ++i) {
+        (*map)[size - 1 - i][size - 1 - (radius - 1)] = false;
+        (*map)[size - 1 + i][size - 1 + (radius - 1)] = false;
+        (*map)[size - 1 - (radius - 1)][size - 1 - i] = false;
+        (*map)[size - 1 + (radius - 1)][size - 1 + i] = false;
+        (*map)[size - 1 + i][size - 1 - (radius - 1) + i] = false;
+        (*map)[size - 1 - (radius - 1) + i][size - 1 + i] = false;
+    }
+}
+
+void TestCircle(int size, int radius) {
+    ColoredHexagon hex(size, 2);
+    std::vector<std::vector<bool>> coloring(size * 2 - 1, std::vector<bool>(size * 2 - 1, true));
+    MakeCircle(&coloring, size, radius);
+    coloring[size - 1][size - 1] = false;
+    hex.SetZeroLiquid(coloring);
+    auto percol = CheckPercolate(hex);
+    assert(!percol[0] || radius == 1);
+}
+
+void TestCircleWithHole(int size, int radius) {
+    ColoredHexagon hex(size, 2);
+    std::vector<std::vector<bool>> coloring(size * 2 - 1, std::vector<bool>(size * 2 - 1, true));
+    MakeCircle(&coloring, size, radius);
+    coloring[size - 1][size - 1] = false;
+    coloring[size - 1][size - 1 - (radius - 1)] = true;
+    hex.SetZeroLiquid(coloring);
+    auto percol = CheckPercolate(hex);
+    assert(percol[0]);
+}
+
 void UnitTests() {
     ColoredHexagon hex(2, 3);
     auto percol = CheckPercolate(hex);
     assert(percol[0] && !percol[1] && !percol[2]);
+    std::mt19937 generator(1514);
+    hex.Randomize(&generator);
+    percol = CheckPercolate(hex);
+    assert(percol[0] || percol[1] || percol[2]);
+    TestRandomizing(10, 3);
+    TestRandomizing(100, 3);
+    TestRandomizing(10, 5);
+    TestRandomizing(100, 5);
+    TestRandomizing(10, 10);
+    TestRandomizing(100, 10);
+    TestCircle(5, 2);
+    TestCircle(5, 4);
+    TestCircle(1000, 20);
+    TestCircle(1000, 200);
+    TestCircle(1000, 999);
+    TestCircle(1000, 1000);
+    TestCircleWithHole(500, 2);
+    TestCircleWithHole(500, 20);
+    TestCircleWithHole(500, 200);
+    TestCircleWithHole(500, 499);
+    TestCircleWithHole(500, 500);
 }
