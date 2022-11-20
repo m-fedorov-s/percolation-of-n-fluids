@@ -1,3 +1,4 @@
+results_csv
 *.[ao]
 *~
 *.exe
@@ -12,7 +13,7 @@
 *.tex
 /текст
 /.idea
-/tmp
+/.vscode
 # Prerequisites
 *.d
 
