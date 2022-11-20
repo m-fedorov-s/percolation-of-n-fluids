@@ -13,6 +13,7 @@
 #include <random>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -130,7 +131,7 @@ int main(int argc, char **argv) {
     int64_t total_steps = 0;
     for (auto size = min_size; size <= max_size; size += step) {
         for (auto liquids = liquids_count_min; liquids <= liquids_count_max; ++liquids) {
-            total_steps += liquids * samples * size * size;
+            total_steps += liquids * size * size;
         }
     }
     int64_t current_step = 0;
@@ -138,33 +139,50 @@ int main(int argc, char **argv) {
     for (auto liquids_count = liquids_count_min; liquids_count <= liquids_count_max;
          ++liquids_count) {
         for (auto size = min_size; size <= max_size; size += step) {
-            std::vector<std::vector<bool>> results;
+            std::vector<std::vector<bool>> results(samples, std::vector<bool>());
             std::stringstream filename_stream;
             filename_stream << "./results_csv/results_liquids_" << liquids_count << "_size_" << size
                             << ".csv";
             auto filename = filename_stream.str();
-            results.reserve(samples);
-            ColoredHexagon hex(size, liquids_count);
-            for (auto num = 0; static_cast<size_t>(num) < samples; ++num) {
-                auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
-                                        std::chrono::high_resolution_clock::now() - start)
-                                        .count();
-                auto time_estimated =
-                    current_step > 0
-                        ? static_cast<double>(time_elapsed * total_steps) / current_step
-                        : 0;
-                auto minutes_estimated = static_cast<int>(floor(time_estimated / 60));
-                auto seconds_estimated = time_estimated - minutes_estimated * 60;
-                std::cerr << "Computations " << std::fixed << std::setprecision(2)
-                          << static_cast<double>(current_step) / total_steps * 100
-                          << "%; Time passed " << time_elapsed / 60 << ":" << std::setw(2)
-                          << std::setfill('0') << time_elapsed % 60 << " out of "
-                          << minutes_estimated << ":" << std::setw(5) << std::setfill('0')
-                          << seconds_estimated << " estimated.\r";
-                current_step += liquids_count * size * size;
-                hex.Randomize(&generator);
-                results.push_back(CheckPercolate(hex));
+
+            // launch several threads to speed up process
+            auto processor_count =
+                std::thread::hardware_concurrency() > 1 ? std::thread::hardware_concurrency() : 2;
+            std::vector<std::thread> threads;
+            threads.reserve(processor_count);
+            auto lambda = [&](int shift) {
+                std::mt19937 generator(1514 + shift);
+                ColoredHexagon hex(size, liquids_count);
+                for (auto index = shift; index < static_cast<int>(samples);
+                     index += processor_count) {
+                    hex.Randomize(&generator);
+                    auto one_result = CheckPercolate(hex);
+                    results[index] = one_result;
+                }
+            };
+            for (auto thread_index = 0; thread_index < static_cast<int>(processor_count);
+                 ++thread_index) {
+                threads.emplace_back(lambda, thread_index);
             }
+
+            for (auto &thread : threads) {
+                thread.join();
+            }
+
+            auto time_elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                                    std::chrono::high_resolution_clock::now() - start)
+                                    .count();
+            auto time_estimated =
+                current_step > 0 ? static_cast<double>(time_elapsed * total_steps) / current_step
+                                 : 0;
+            auto minutes_estimated = static_cast<int>(floor(time_estimated / 60));
+            auto seconds_estimated = time_estimated - minutes_estimated * 60;
+            std::cerr << "Computations " << std::fixed << std::setprecision(2)
+                      << static_cast<double>(current_step) / total_steps * 100 << "%; Time passed "
+                      << time_elapsed / 60 << ":" << std::setw(2) << std::setfill('0')
+                      << time_elapsed % 60 << " out of " << minutes_estimated << ":" << std::setw(5)
+                      << std::setfill('0') << seconds_estimated << " estimated.\r";
+            current_step += liquids_count * size * size;
             WriteToFile(results, filename);
         }
     }
