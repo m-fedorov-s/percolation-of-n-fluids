@@ -33,6 +33,8 @@ public:
 
     void SetZeroLiquid(const std::vector<std::vector<bool>> &liquid_map);
 
+    void PrintLiquid(int liquid_index) const;
+
     std::vector<std::pair<int, int>> GetLiquidNeighbors(int x, int y, int liquid) const;
 
 private:
@@ -106,10 +108,10 @@ int main(int argc, char **argv) {
               << "Please, enter the minimal size of the hexagon (recommended at least 5):";
     size_t min_size;
     std::cin >> min_size;
-    std::cout << "Please, enter the maximal size of the hexagon:";
+    std::cout << "Please, enter the maximal size of the hexagon: ";
     size_t max_size;
     std::cin >> max_size;
-    std::cout << "Please, enter the step of the sizes (recommended 5):";
+    std::cout << "Please, enter the step of the sizes (recommended 5): ";
     size_t step;
     std::cin >> step;
     std::cout << "Size: from " << min_size << " to " << max_size << " with step " << step << ".\n";
@@ -121,7 +123,7 @@ int main(int argc, char **argv) {
     size_t liquids_count_max;
     std::cin >> liquids_count_max;
     assert(liquids_count_max >= liquids_count_min);
-    std::cout << "Liquids number will be from" << liquids_count_min << " to " << liquids_count_max
+    std::cout << "Liquids number will be from " << liquids_count_min << " to " << liquids_count_max
               << " inclusively.\n";
     std::cout << "Please, enter the number of samples: ";
     size_t samples;
@@ -235,7 +237,7 @@ std::vector<std::pair<int, int>> ColoredHexagon::GetLiquidNeighbors(int x, int y
     if (y > 0 && x - y < hexagon_size && coloring[x][y - 1][liquid] == 1) {
         list.emplace_back(x, y - 1);
     }
-    if (x - y > hexagon_size && x < 2 * hexagon_size - 2 && coloring[x + 1][y][liquid] == 1) {
+    if (x - y < hexagon_size && x < 2 * hexagon_size - 2 && coloring[x + 1][y][liquid] == 1) {
         list.emplace_back(x + 1, y);
     }
     if (x < 2 * hexagon_size - 2 && y < 2 * hexagon_size - 2 &&
@@ -253,7 +255,7 @@ std::vector<std::pair<int, int>> ColoredHexagon::GetLiquidNeighbors(int x, int y
 
 bool ColoredHexagon::IsInBorder(int x, int y) const {
     return x == 0 || y == 0 || x == 2 * hexagon_size - 2 || y == 2 * hexagon_size - 2 ||
-           x - y == hexagon_size || y - x == hexagon_size;
+           x - y == hexagon_size - 1 || y - x == hexagon_size - 1;
 }
 
 const std::vector<std::vector<std::vector<int8_t>>> &ColoredHexagon::Coloring() const {
@@ -268,6 +270,18 @@ void ColoredHexagon::SetZeroLiquid(const std::vector<std::vector<bool>> &liquid_
     }
 }
 
+void ColoredHexagon::PrintLiquid(int liquid_index) const {
+    if (liquid_index >= liquids_count) {
+        return;
+    }
+    for (auto &line : coloring) {
+        for (auto &cell : line) {
+            std::cerr << (cell[liquid_index] == 1 ? "x" : ".");
+        }
+        std::cerr << "\n";
+    }
+}
+
 std::vector<bool> CheckPercolate(const ColoredHexagon &hex) {
     auto liquids = hex.LiquidsCount();
     auto size = hex.HexagonSize();
@@ -276,7 +290,7 @@ std::vector<bool> CheckPercolate(const ColoredHexagon &hex) {
         liquids,
         std::vector<std::vector<bool>>(size * 2 - 1, std::vector<bool>(size * 2 - 1, true)));
     for (auto liquid_number = 0; liquid_number < liquids; ++liquid_number) {
-        not_visited[liquid_number][size][size] = false;
+        not_visited[liquid_number][size - 1][size - 1] = false;
     }
     std::vector<std::vector<std::pair<int, int>>> stacks(liquids,
                                                          {std::make_pair(size - 1, size - 1)});
@@ -365,14 +379,90 @@ void TestCircleWithHole(int size, int radius) {
     assert(percol[0]);
 }
 
+void TestBorder() {
+    ColoredHexagon hex2(2, 3);
+    assert(hex2.IsInBorder(0, 0));
+    assert(hex2.IsInBorder(1, 0));
+    assert(hex2.IsInBorder(2, 1));
+    assert(hex2.IsInBorder(2, 2));
+    assert(hex2.IsInBorder(1, 2));
+    assert(hex2.IsInBorder(0, 1));
+    ColoredHexagon hex3(3, 3);
+    assert(hex3.IsInBorder(0, 0));
+    assert(hex3.IsInBorder(1, 0));
+    assert(hex3.IsInBorder(2, 0));
+    assert(hex3.IsInBorder(3, 1));
+    assert(hex3.IsInBorder(4, 2));
+    assert(hex3.IsInBorder(4, 3));
+    assert(hex3.IsInBorder(4, 4));
+    assert(hex3.IsInBorder(3, 4));
+    assert(hex3.IsInBorder(2, 4));
+    assert(hex3.IsInBorder(1, 3));
+    assert(hex3.IsInBorder(0, 2));
+    assert(hex3.IsInBorder(0, 1));
+}
+
+void TestGoOneDirection(int size, std::string direction) {
+    ColoredHexagon hex(size, 2);
+    std::vector<std::vector<bool>> coloring(size * 2 - 1, std::vector<bool>(size * 2 - 1, false));
+    int x_shift = 0;
+    int y_shift = 0;
+    if (direction == "up") {
+        x_shift = 0;
+        y_shift = -1;
+    } else if (direction == "down") {
+        x_shift = 0;
+        y_shift = 1;
+    } else if (direction == "left") {
+        x_shift = -1;
+        y_shift = 0;
+    } else if (direction == "right") {
+        x_shift = 1;
+        y_shift = 0;
+    } else if (direction == "left-up") {
+        x_shift = -1;
+        y_shift = -1;
+    } else if (direction == "right-down") {
+        x_shift = 1;
+        y_shift = 1;
+    } else {
+        std::cerr << "Wrong parameters: " << direction;
+    }
+    for (auto i = 0; i < size; ++i) {
+        coloring[size - 1 + i * x_shift][size - 1 + i * y_shift] = true;
+    }
+    hex.SetZeroLiquid(coloring);
+    auto percol = CheckPercolate(hex);
+    if (!percol[0]) {
+        std::cerr << "Failed direction: " << direction << '\n';
+        hex.PrintLiquid(0);
+    }
+    assert(percol[0]);
+}
+
 void UnitTests() {
     ColoredHexagon hex(2, 3);
     auto percol = CheckPercolate(hex);
     assert(percol[0] && !percol[1] && !percol[2]);
     std::mt19937 generator(1514);
-    hex.Randomize(&generator);
-    percol = CheckPercolate(hex);
-    assert(percol[0] || percol[1] || percol[2]);
+    for (auto i = 0; i < 100; ++i) {
+        hex.Randomize(&generator);
+        percol = CheckPercolate(hex);
+        assert(percol[0] || percol[1] || percol[2]);
+    }
+    TestBorder();
+    TestGoOneDirection(3, "up");
+    TestGoOneDirection(30, "up");
+    TestGoOneDirection(3, "down");
+    TestGoOneDirection(30, "down");
+    TestGoOneDirection(3, "left");
+    TestGoOneDirection(30, "left");
+    TestGoOneDirection(3, "right");
+    TestGoOneDirection(30, "right");
+    TestGoOneDirection(3, "left-up");
+    TestGoOneDirection(30, "left-up");
+    TestGoOneDirection(3, "right-down");
+    TestGoOneDirection(30, "right-down");
     TestRandomizing(10, 3);
     TestRandomizing(100, 3);
     TestRandomizing(10, 5);
